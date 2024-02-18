@@ -10,22 +10,30 @@ import (
 
 	"github.com/ivanelgran23/bookings/pkg/config"
 	"github.com/ivanelgran23/bookings/pkg/models"
+	"github.com/justinas/nosurf"
 )
+
+var functions = template.FuncMap{}
 
 var app *config.AppConfig
 
+// NewTemplates sets the config for the template package
 func NewTemplates(a *config.AppConfig) {
 	app = a
 }
 
-func AddDefaultData(td *models.TemplateData) *models.TemplateData {
+// AddDefaultData adds data for all templates
+func AddDefaultData(td *models.TemplateData, r *http.Request) *models.TemplateData {
+	td.CSRFToken = nosurf.Token(r)
 	return td
 }
 
 // RenderTemplate renders a template
-func RenderTemplate(w http.ResponseWriter, tmpl string, td *models.TemplateData) {
+func RenderTemplate(w http.ResponseWriter, r *http.Request, tmpl string, td *models.TemplateData) {
 	var tc map[string]*template.Template
+
 	if app.UseCache {
+		// get the template cache from the app config
 		tc = app.TemplateCache
 	} else {
 		tc, _ = CreateTemplateCache()
@@ -38,34 +46,39 @@ func RenderTemplate(w http.ResponseWriter, tmpl string, td *models.TemplateData)
 
 	buf := new(bytes.Buffer)
 
-	td = AddDefaultData(td)
+	td = AddDefaultData(td, r)
+
 	_ = t.Execute(buf, td)
 
 	_, err := buf.WriteTo(w)
 	if err != nil {
-		fmt.Println("Error writing template: ", err)
+		fmt.Println("error writing template to browser", err)
 	}
+
 }
 
+// CreateTemplateCache creates a template cache as a map
 func CreateTemplateCache() (map[string]*template.Template, error) {
-	myCache := make(map[string]*template.Template)
 
-	//get all of the template files
+	myCache := map[string]*template.Template{}
+
 	pages, err := filepath.Glob("./templates/*.page.tmpl")
 	if err != nil {
 		return myCache, err
 	}
-	//range through all of the files
+
 	for _, page := range pages {
 		name := filepath.Base(page)
-		ts, err := template.New(name).ParseFiles(page)
+		ts, err := template.New(name).Funcs(functions).ParseFiles(page)
 		if err != nil {
 			return myCache, err
 		}
+
 		matches, err := filepath.Glob("./templates/*.layout.tmpl")
 		if err != nil {
 			return myCache, err
 		}
+
 		if len(matches) > 0 {
 			ts, err = ts.ParseGlob("./templates/*.layout.tmpl")
 			if err != nil {
@@ -75,5 +88,6 @@ func CreateTemplateCache() (map[string]*template.Template, error) {
 
 		myCache[name] = ts
 	}
+
 	return myCache, nil
 }

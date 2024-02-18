@@ -19,8 +19,10 @@ var session *scs.SessionManager
 
 // main is the main function
 func main() {
+	// change this to true when in production
 	app.InProduction = false
 
+	// set up the session
 	session = scs.New()
 	session.Lifetime = 24 * time.Hour
 	session.Cookie.Persist = true
@@ -31,8 +33,9 @@ func main() {
 
 	tc, err := render.CreateTemplateCache()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("cannot create template cache")
 	}
+
 	app.TemplateCache = tc
 	app.UseCache = false
 
@@ -43,8 +46,13 @@ func main() {
 
 	fmt.Println(fmt.Sprintf("Staring application on port %s", portNumber))
 
-	srv := &http.Server{Addr: portNumber, Handler: routes(&app)}
+	srv := &http.Server{
+		Addr:    portNumber,
+		Handler: routes(&app),
+	}
 
 	err = srv.ListenAndServe()
-	log.Fatal(err)
+	if err != nil {
+		log.Fatal(err)
+	}
 }

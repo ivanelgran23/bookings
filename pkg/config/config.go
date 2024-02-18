@@ -7,7 +7,7 @@ import (
 	"github.com/alexedwards/scs/v2"
 )
 
-// AppConfig is the configuration for the application
+// AppConfig holds the application config
 type AppConfig struct {
 	UseCache      bool
 	TemplateCache map[string]*template.Template
